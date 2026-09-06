@@ -23,9 +23,12 @@ export default {
       },
       fontSize: {
         10: "0.625rem",
+        24: "1.5rem",
         28: "1.75rem",
         32: "2rem",
+        36: "2.25rem",
         40: "2.5rem",
+        48: "3rem",
         64: "4rem"
       },
     },
