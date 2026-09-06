@@ -47,7 +47,12 @@ const signup = async (req, res) => {
         });
 
         const token = generateToken(createdUser._id, createdUser.email, createdUser.role);
-        res.cookie("token", token);
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV !== "development",
+            sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
 
         return res.status(201).json({
             _id: createdUser._id,
@@ -91,7 +96,12 @@ const signin = async (req, res) => {
         }
 
         const token = generateToken(user._id, user.email, user.role);
-        res.cookie("token", token);
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV !== "development",
+            sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
 
         return res.status(200).json({
             message: "Signin successful",
@@ -109,7 +119,11 @@ const signin = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        res.clearCookie("token");
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV !== "development",
+            sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+        });
         return res.status(200).json({
             message: "Logged out successfully"
         });
