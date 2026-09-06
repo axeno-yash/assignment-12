@@ -1,3 +1,42 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: "Integral CF";
+  src: url("/fonts/Fontspring-DEMO-integralcf-regular.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-Regular.woff2") format("woff2");
+}
+
+*{
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+@layer utilities {
+  .font-integral-bold {
+    font-family: "Integral CF";
+    font-weight: 700;
+  }
+
+  .font-satoshi-regular {
+    font-family: "Satoshi";
+    font-weight: 400;
+  }
+
+  .font-satoshi-medium {
+    font-family: "Satoshi";
+    font-weight: 500;
+  }
+
+  .font-satoshi-bold {
+    font-family: "Satoshi";
+    font-weight: 700;
+  }
+}

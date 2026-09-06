@@ -5,29 +5,32 @@ import generateToken from "../utils/generateToken.js";
 
 const saltRounds = 10;
 
+const signupSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.email("Invalid email format"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    phone: z.number().min(10).optional(),
+    address: z.string().optional(),
+}).strict();
+
+const signinSchema = z.object({
+    email: z.email("Invalid email format"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+}).strict();
+
 const signup = async (req, res) => {
     try {
-        const schema = z.object({
-            name: z.string(),
-            email: z.email(),
-            password: z.string().min(6),
-            phone: z.number().min(10).optional(),
-            address: z.string().optional()
-        }).strict();
-
-        const { success, error, data } = schema.safeParse(req.body);
-
-        if (error || !success) {
+        const { success, data, error } = signupSchema.safeParse(req.body);
+        if (!success || error) {
             return res.status(400).json({
-                message: "Invalid Credentials",
-                data
+                message: "Invalid input data",
+                details: error.errors
             });
         }
         const { name, email, password, phone, address } = data;
 
-        const user = await User.find({ email });
-
-        if (user.length > 0) {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
             return res.status(400).json({
                 message: "User already exists"
             });
@@ -42,7 +45,9 @@ const signup = async (req, res) => {
             phone,
             address
         });
-        console.log(createdUser);
+
+        const token = generateToken(createdUser._id, createdUser.email, createdUser.role);
+        res.cookie("token", token);
 
         return res.status(201).json({
             _id: createdUser._id,
@@ -50,9 +55,9 @@ const signup = async (req, res) => {
             email: createdUser.email,
             phone: createdUser?.phone,
             address: createdUser?.address,
-            token: generateToken(createdUser._id, createdUser.email, createdUser.role)
+            role: createdUser.role,
+            token
         });
-
     } catch (err) {
         return res.status(500).json({
             message: err.message
@@ -62,20 +67,15 @@ const signup = async (req, res) => {
 
 const signin = async (req, res) => {
     try {
-        const schema = z.object({
-            email: z.email(),
-            password: z.string().min(6)
-        }).strict();
-
-        const { success, data, error } = schema.safeParse(req.body);
-        if (error || !success) {
+        const { success, data, error } = signinSchema.safeParse(req.body);
+        if (!success || error) {
             return res.status(400).json({
-                message: "Invalid Credentials"
+                message: "Invalid input data",
+                details: error.errors
             });
         }
 
         const { email, password } = data;
-
         const user = await User.findOne({ email }).select("+password");
         if (!user) {
             return res.status(404).json({
@@ -83,25 +83,23 @@ const signin = async (req, res) => {
             });
         }
 
-        const result = await bcrypt.compare(password, user.password);
-        if (!result) {
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
             return res.status(401).json({
                 message: "Wrong password"
             });
-        } else {
-            const token = generateToken(user._id, user.email, user.role);
-
-            res.cookie("token", token);
-
-            return res.status(200).json({
-                message: "Signin successful",
-                _id: user._id,
-                email: user.email,
-                role: user.role,
-                token: token
-            });
         }
 
+        const token = generateToken(user._id, user.email, user.role);
+        res.cookie("token", token);
+
+        return res.status(200).json({
+            message: "Signin successful",
+            _id: user._id,
+            email: user.email,
+            role: user.role,
+            token
+        });
     } catch (err) {
         return res.status(500).json({
             message: err.message
@@ -122,8 +120,4 @@ const logout = async (req, res) => {
     }
 };
 
-export {
-    signup,
-    signin,
-    logout
-};
+export { signup, signin, logout };
