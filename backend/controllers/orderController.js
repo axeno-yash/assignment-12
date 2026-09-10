@@ -115,7 +115,10 @@ export const getOrderById = async (req, res) => {
 
 export const getAllOrdersAdmin = async (req, res) => {
     try {
-        const orders = await Order.find({}).populate("user", "name email").sort({ createdAt: -1 });
+        const orders = await Order.find({})
+            .populate("user", "name email")
+            .populate("items.product", "title images price")
+            .sort({ createdAt: -1 });
         res.status(200).json({ orders });
     } catch (error) {
         res.status(500).json({ message: error.message });

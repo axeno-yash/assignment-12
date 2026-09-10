@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import Product from "../models/product.model.js";
+import Category from "../models/category.model.js";
 import { z } from "zod";
 
 const createProductSchema = z.object({
@@ -28,9 +30,13 @@ const updateStockSchema = z.object({
     ).min(1, "At least one variant is required"),
 }).strict();
 
+function slugifyName(value = "") {
+    return String(value).toLowerCase().trim().split(" ").filter(Boolean).join("-");
+}
+
 export const getProducts = async (req, res) => {
     try {
-        const { search, category, minPrice, maxPrice, size, inStock, sort, page = 1, limit = 9 } = req.query;
+        const { search, category, type, minPrice, maxPrice, size, inStock, sort, page = 1, limit = 9, view } = req.query;
         const query = {};
 
         if (search) {
@@ -40,8 +46,28 @@ export const getProducts = async (req, res) => {
             ];
         }
 
-        if (category) {
-            query.category = category;
+        if (type) {
+            query.title = { $regex: type, $options: "i" };
+        }
+
+        if (category && category !== "all") {
+            if (mongoose.Types.ObjectId.isValid(category) && String(new mongoose.Types.ObjectId(category)) === category) {
+                query.category = category;
+            } else {
+                const slugParam = String(category).toLowerCase().trim();
+                let foundCategory = await Category.findOne({ slug: slugParam });
+                if (!foundCategory) {
+                    const allCategories = await Category.find({});
+                    foundCategory = allCategories.find(
+                        (c) => c.name.toLowerCase() === slugParam || slugifyName(c.name) === slugParam
+                    );
+                }
+                if (foundCategory) {
+                    query.category = foundCategory._id;
+                } else {
+                    query.category = new mongoose.Types.ObjectId();
+                }
+            }
         }
 
         if (minPrice || maxPrice) {
@@ -70,11 +96,20 @@ export const getProducts = async (req, res) => {
         const skip = (pageNum - 1) * limitNum;
 
         const totalProducts = await Product.countDocuments(query);
-        const products = await Product.find(query)
+        
+        let productQuery = Product.find(query)
             .populate("category", "name")
             .sort(sortOption)
             .skip(skip)
             .limit(limitNum);
+
+        if (view === "card") {
+            productQuery = productQuery.select(
+                "title images rating price discountRate"
+            );
+        }
+
+        const products = await productQuery;
 
         res.status(200).json({
             products,
@@ -90,6 +125,7 @@ export const getProducts = async (req, res) => {
 export const getProductById = async (req, res) => {
     try {
         const product = await Product.findById(req.params.id).populate("category", "name");
+        console.log("Product", product);
         if (!product) {
             return res.status(404).json({ message: "Product not found" });
         }

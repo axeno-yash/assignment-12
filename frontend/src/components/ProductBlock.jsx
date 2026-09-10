@@ -1,17 +1,29 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Image from "./Image";
+import conf from "../conf/conf.js";
 
 function ProductBlock({ product, className = "" }) {
   if (!product) return null;
-
   const id = product._id || product.id;
   const name = product.title || product.name || "Product";
-  const image = product.image;
+  const backendBase = (conf.backendUrl || "http://localhost:3000/api").replace(/\/api\/?$/, "");
+  const imagePath = product?.images?.[0] || "";
+  let image = "/images/arrival1.png";
+  if (imagePath) {
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      image = imagePath;
+    } else if (imagePath.startsWith("/images/")) {
+      image = imagePath;
+    } else {
+      image = `${backendBase}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
+    }
+  }
+
   const rating = product.rating || 0;
-  const price = product.price;
-  const originalPrice = product.originalPrice || product.discountedPrice;
-  const discount = product.discount || product.discountPercentage;
+  const price = product.discountRate ? Math.round(product.price * (1 - product.discountRate / 100)) : product.price;
+  const originalPrice = product.discountRate ? product.price : null;
+  const discountRate = product.discountRate || "";
 
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 >= 0.5;
@@ -65,9 +77,9 @@ function ProductBlock({ product, className = "" }) {
             ${originalPrice}
           </span>
         )}
-        {discount && (
+        {discountRate && (
           <span className="font-satoshi-medium text-10 text-red bg-redAlpha60 py-1.5 px-3.5 rounded-full">
-            -{discount}%
+            -{discountRate}%
           </span>
         )}
       </div>

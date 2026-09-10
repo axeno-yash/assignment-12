@@ -12,7 +12,7 @@
   src: url("/fonts/Satoshi-Regular.woff2") format("woff2");
 }
 
-*{
+* {
   font-family: sans-serif;
   margin: 0;
   padding: 0;
@@ -38,5 +38,10 @@
   .font-satoshi-bold {
     font-family: "Satoshi";
     font-weight: 700;
+  }
+
+  .no-scroller {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

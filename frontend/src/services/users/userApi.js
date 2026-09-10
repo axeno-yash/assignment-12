@@ -4,16 +4,19 @@ import { baseApi } from "../baseApi";
 export const userApi = createApi({
     reducerPath: "userApi",
     baseQuery: baseApi,
+    tagTypes: ["User"],
     endpoints: (builder) => ({
         getUserProfile: builder.query({
-            query: () => "/users/profile",
+            query: () => "/user/profile",
+            providesTags: ["User"],
         }),
         updateUserProfile: builder.mutation({
             query: (body) => ({
-                url: "/users/profile",
+                url: "/user/profile",
                 method: "PUT",
                 body,
             }),
+            invalidatesTags: ["User"],
         }),
     }),
 });

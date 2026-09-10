@@ -4,12 +4,12 @@ import Newsletter from "./Newsletter";
 
 function Footer() {
   return (
-    <footer className="w-full bg-[#F0F0F0] text-black relative mt-24 lg:mt-32">
-      <div className="w-full px-4 lg:px-24 absolute -top-20 lg:-top-24 left-0 right-0 z-20">
+    <div className="w-full bg-white">
+      <div className="w-full px-4 lg:px-24 relative z-20">
         <Newsletter />
       </div>
 
-      <div className="pt-32 lg:pt-36 pb-8 px-4 lg:px-24">
+      <footer className="w-full bg-[#F0F0F0] text-black -mt-20 lg:-mt-24 pt-28 lg:pt-32 pb-8 px-4 lg:px-24">
         <div className="flex flex-col lg:flex-row justify-between gap-8 pb-10 border-b border-black/10">
           <div className="max-w-[248px]">
             <h2 className="font-integral-bold text-28 lg:text-32 tracking-tight mb-4">
@@ -79,9 +79,10 @@ function Footer() {
 
         <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-black/60 font-satoshi-regular">
           <p>Shop.co © 2000-2023, All Rights Reserved</p>
+          <img src="/images/brands.png" alt="brands-icon" width={250}/>
         </div>
-      </div>
-    </footer>
+      </footer>
+    </div>
   );
 }
 

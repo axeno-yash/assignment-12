@@ -15,9 +15,9 @@ router.use(authMiddleware);
 
 router.post("/", createOrderFromCart);
 router.get("/", getMyOrders);
-router.get("/:id", getOrderById);
-
 router.get("/admin/all", roleMiddleware, getAllOrdersAdmin);
 router.patch("/admin/:id/status", roleMiddleware, updateOrderStatusAdmin);
+
+router.get("/:id", getOrderById);
 
 export default router;
