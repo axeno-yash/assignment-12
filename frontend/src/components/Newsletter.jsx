@@ -26,7 +26,11 @@ function Newsletter() {
         await emailjs.send(
           emailjsServiceId,
           emailjsTemplateId,
-          { user_email: value, to_email: value, date: new Date().toISOString() },
+          {
+            email: value,
+            name: "there",
+            title: "Newsletter Subscription",
+          },
           { publicKey: emailjsPublicKey }
         );
       } else {
