@@ -48,7 +48,7 @@ export const productsApi = createApi({
             invalidatesTags: ['Products'],
         }),
         updateProduct: builder.mutation({
-            query: ({ id, ...body }) => ({
+            query: ({ id, body }) => ({
                 url: `/products/${id}`,
                 method: 'PUT',
                 body,

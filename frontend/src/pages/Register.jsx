@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { RedirectPath, Button } from "../components";
 import { useRegisterUserMutation } from "../services/auth/authApi";
+import { isEmail } from "../utils/validate.js";
 
 function Register() {
   const navigate = useNavigate();
@@ -27,19 +28,30 @@ function Register() {
     e.preventDefault();
     setErrorMessage("");
 
-    if (!formData.name || !formData.email || !formData.password) {
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+    const { password } = formData;
+    if (!name || !email || !password) {
       setErrorMessage("Please fill in all required fields.");
+      return;
+    }
+    if (!isEmail(email)) {
+      setErrorMessage("Enter a valid email address.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage("Password must be at least 6 characters.");
+      return;
+    }
+    if (formData.phone && Number.isNaN(Number(formData.phone))) {
+      setErrorMessage("Phone number must contain only digits.");
       return;
     }
 
     try {
-      const payload = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-      };
+      const payload = { name, email, password };
       if (formData.phone) payload.phone = Number(formData.phone);
-      if (formData.address) payload.address = formData.address.trim();
+      if (formData.address.trim()) payload.address = formData.address.trim();
 
       await registerUser(payload).unwrap();
       navigate("/orders");
@@ -76,7 +88,7 @@ function Register() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="font-satoshi-medium text-sm text-black">
                 Full Name *
@@ -88,7 +100,6 @@ function Register() {
                 onChange={handleChange}
                 placeholder="Enter your name"
                 className="w-full bg-[#F0F0F0] rounded-[30px] px-5 py-3 text-sm font-satoshi-regular outline-none text-black placeholder:text-black/40 border border-transparent focus:border-black/20"
-                required
               />
             </div>
 
@@ -103,7 +114,6 @@ function Register() {
                 onChange={handleChange}
                 placeholder="Enter your email"
                 className="w-full bg-[#F0F0F0] rounded-[30px] px-5 py-3 text-sm font-satoshi-regular outline-none text-black placeholder:text-black/40 border border-transparent focus:border-black/20"
-                required
               />
             </div>
 
@@ -118,8 +128,6 @@ function Register() {
                 onChange={handleChange}
                 placeholder="Create a password"
                 className="w-full bg-[#F0F0F0] rounded-[30px] px-5 py-3 text-sm font-satoshi-regular outline-none text-black placeholder:text-black/40 border border-transparent focus:border-black/20"
-                required
-                minLength={6}
               />
             </div>
 

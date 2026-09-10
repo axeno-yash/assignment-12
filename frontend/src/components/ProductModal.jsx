@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 
 const STANDARD_SIZES = ["Small", "Medium", "Large", "X-Large"];
+const MAX_UPLOAD_FILES = 5;
+const MAX_UPLOAD_SIZE_MB = 5;
+const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 
 function ProductModal({ product, categories = [], saving = false, error = null, onClose, onSubmit }) {
   const isEdit = Boolean(product);
@@ -12,6 +15,49 @@ function ProductModal({ product, categories = [], saving = false, error = null, 
     product?.category?._id || product?.category || ""
   );
   const [imagesText, setImagesText] = useState((product?.images || []).join("\n"));
+  const [newFiles, setNewFiles] = useState([]);
+  const [fileError, setFileError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const clearError = (key) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validate = () => {
+    const errs = {};
+    if (!title.trim()) errs.title = "Product name is required.";
+    if (!description.trim()) errs.description = "Description is required.";
+    if (price === "" || Number.isNaN(Number(price))) {
+      errs.price = "Enter a valid price.";
+    } else if (Number(price) < 0) {
+      errs.price = "Price cannot be negative.";
+    }
+    if (discountRate !== "") {
+      if (Number.isNaN(Number(discountRate))) {
+        errs.discountRate = "Enter a valid discount.";
+      } else if (Number(discountRate) < 0 || Number(discountRate) > 100) {
+        errs.discountRate = "Discount must be between 0 and 100.";
+      }
+    }
+    if (!category) errs.category = "Choose a category.";
+    const urlCount = imagesText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean).length;
+    if (urlCount + newFiles.length === 0) {
+      errs.images = "Add at least one image URL or upload.";
+    }
+    if (variants.filter((v) => v.size.trim()).length === 0) {
+      errs.variants = "Add at least one size.";
+    }
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
   const [variants, setVariants] = useState(() => {
     const existing = product?.variants || [];
     const qtyOf = (size) => {
@@ -45,8 +91,28 @@ function ProductModal({ product, categories = [], saving = false, error = null, 
       ? Math.round(Number(price) * (1 - Number(discountRate) / 100))
       : null;
 
+  const handleFiles = (e) => {
+    setFileError(null);
+    const picked = Array.from(e.target.files || []);
+    const valid = [];
+    for (const file of picked) {
+      if (newFiles.length + valid.length >= MAX_UPLOAD_FILES) {
+        setFileError(`You can upload up to ${MAX_UPLOAD_FILES} images at a time`);
+        break;
+      }
+      if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+        setFileError(`"${file.name}" is over ${MAX_UPLOAD_SIZE_MB}MB and was skipped`);
+        continue;
+      }
+      valid.push(file);
+    }
+    if (valid.length > 0) setNewFiles([...newFiles, ...valid]);
+    e.target.value = "";
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!validate()) return;
     onSubmit({
       title: title.trim(),
       description: description.trim(),
@@ -61,7 +127,7 @@ function ProductModal({ product, categories = [], saving = false, error = null, 
         quantity: Math.max(0, Number(v.quantity) || 0),
       })),
       category,
-    });
+    }, newFiles);
   };
 
   const inputClass =
@@ -104,55 +170,72 @@ function ProductModal({ product, categories = [], saving = false, error = null, 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 pt-4 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} noValidate className="p-5 sm:p-6 pt-4 flex flex-col gap-5">
           <div>
-            <label className={labelClass}>Product name</label>
+            <label className={labelClass}>Product name *</label>
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                clearError("title");
+              }}
               placeholder="e.g. Vertical Striped Shirt"
-              required
-              className={inputClass}
+              className={`${inputClass} ${fieldErrors.title ? "!border-red-400" : ""}`}
             />
+            {fieldErrors.title && (
+              <p className="mt-1 text-xs font-satoshi-medium text-red-700">{fieldErrors.title}</p>
+            )}
           </div>
 
           <div>
-            <label className={labelClass}>Description</label>
+            <label className={labelClass}>Description *</label>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                clearError("description");
+              }}
               placeholder="Fabric, fit and care details…"
-              required
               rows={3}
-              className={`${inputClass} resize-none`}
+              className={`${inputClass} resize-none ${fieldErrors.description ? "!border-red-400" : ""}`}
             />
+            {fieldErrors.description && (
+              <p className="mt-1 text-xs font-satoshi-medium text-red-700">{fieldErrors.description}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Price ($)</label>
+              <label className={labelClass}>Price ($) *</label>
               <input
                 type="number"
-                min="0"
-                step="0.01"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  clearError("price");
+                }}
                 placeholder="0"
-                required
-                className={inputClass}
+                className={`${inputClass} ${fieldErrors.price ? "!border-red-400" : ""}`}
               />
+              {fieldErrors.price && (
+                <p className="mt-1 text-xs font-satoshi-medium text-red-700">{fieldErrors.price}</p>
+              )}
             </div>
             <div>
-              <label className={labelClass}>Discount %</label>
+              <label className={labelClass}>Discount % (optional)</label>
               <input
                 type="number"
-                min="0"
-                max="100"
                 value={discountRate}
-                onChange={(e) => setDiscountRate(e.target.value)}
-                className={inputClass}
+                onChange={(e) => {
+                  setDiscountRate(e.target.value);
+                  clearError("discountRate");
+                }}
+                className={`${inputClass} ${fieldErrors.discountRate ? "!border-red-400" : ""}`}
               />
+              {fieldErrors.discountRate && (
+                <p className="mt-1 text-xs font-satoshi-medium text-red-700">{fieldErrors.discountRate}</p>
+              )}
             </div>
           </div>
           {salePrice !== null && (
@@ -162,12 +245,14 @@ function ProductModal({ product, categories = [], saving = false, error = null, 
           )}
 
           <div>
-            <label className={labelClass}>Category</label>
+            <label className={labelClass}>Category *</label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              required
-              className={`${inputClass} cursor-pointer`}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                clearError("category");
+              }}
+              className={`${inputClass} cursor-pointer ${fieldErrors.category ? "!border-red-400" : ""}`}
             >
               <option value="">Select category</option>
               {categories.map((cat) => (
@@ -176,30 +261,75 @@ function ProductModal({ product, categories = [], saving = false, error = null, 
                 </option>
               ))}
             </select>
+            {fieldErrors.category && (
+              <p className="mt-1 text-xs font-satoshi-medium text-red-700">{fieldErrors.category}</p>
+            )}
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-xs font-satoshi-bold text-black">
-                Images
+                Images *
               </label>
               <span className="text-[11px] font-satoshi-medium text-black/40">
-                {imageCount} added
+                {imageCount + newFiles.length} added
               </span>
             </div>
             <textarea
               value={imagesText}
-              onChange={(e) => setImagesText(e.target.value)}
+              onChange={(e) => {
+                setImagesText(e.target.value);
+                clearError("images");
+              }}
               placeholder="/public/assets/1.png (one per line)"
               rows={2}
-              className={`${inputClass} resize-none`}
+              className={`${inputClass} resize-none ${fieldErrors.images ? "!border-red-400" : ""}`}
             />
+            {fieldErrors.images && (
+              <p className="mt-1 text-xs font-satoshi-medium text-red-700">{fieldErrors.images}</p>
+            )}
+            <label className="block mt-2 border border-dashed border-black/20 rounded-xl px-3 py-2.5 text-xs font-satoshi-medium text-black/60 hover:border-black hover:text-black transition-colors cursor-pointer text-center">
+              Upload images (max {MAX_UPLOAD_FILES}, {MAX_UPLOAD_SIZE_MB}MB each)
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFiles}
+                className="hidden"
+              />
+            </label>
+            {fileError && (
+              <p className="mt-1.5 text-xs font-satoshi-medium text-red-700">{fileError}</p>
+            )}
+            {newFiles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {newFiles.map((file, idx) => (
+                  <span
+                    key={`${file.name}-${idx}`}
+                    className="inline-flex items-center gap-1.5 bg-[#F0F0F0] rounded-full pl-3 pr-1.5 py-1 text-[11px] font-satoshi-medium text-black"
+                  >
+                    <span className="max-w-[140px] truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewFiles(newFiles.filter((_, i) => i !== idx))}
+                      className="w-5 h-5 rounded-full hover:bg-black hover:text-white transition-colors font-bold"
+                      aria-label={`Remove ${file.name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="bg-[#F0F0F0]/50 rounded-2xl p-4">
             <label className="block text-xs font-satoshi-bold text-black mb-2">
-              Sizes &amp; stock
+              Sizes &amp; stock *
             </label>
+            {fieldErrors.variants && (
+              <p className="mb-2 text-xs font-satoshi-medium text-red-700">{fieldErrors.variants}</p>
+            )}
             <div className="space-y-2">
               {variants.map((variant, idx) => (
                 <div
@@ -220,7 +350,6 @@ function ProductModal({ product, categories = [], saving = false, error = null, 
                     </button>
                     <input
                       type="number"
-                      min="0"
                       value={variant.quantity}
                       onChange={(e) => changeQty(idx, Number(e.target.value) || 0)}
                       className="w-16 text-center border border-black/20 rounded-lg py-1 text-sm font-satoshi-bold text-black focus:outline-none focus:border-black"

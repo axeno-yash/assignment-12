@@ -10,6 +10,7 @@ import {
 } from "../services/cart/cartApi";
 import { useCreateOrderMutation } from "../services/orders/ordersApi";
 import { useGetUserProfileQuery } from "../services/users/userApi";
+import { roundMoney, formatMoney } from "../utils/money.js";
 
 function Cart() {
   const navigate = useNavigate();
@@ -49,26 +50,24 @@ function Cart() {
     return items.reduce((acc, item) => {
       const p = item.product;
       if (!p) return acc;
-      const discounted = p.discountRate
-        ? p.price * (1 - p.discountRate / 100)
-        : p.price;
-      return acc + discounted * item.quantity;
+      const unit = roundMoney(p.price * (1 - (p.discountRate || 0) / 100));
+      return acc + unit * item.quantity;
     }, 0);
   };
 
   const rawSubtotal = calculateSubtotal();
-  const subtotal = Math.round(rawSubtotal);
+  const subtotal = roundMoney(rawSubtotal);
   const couponApplied = cart?.couponApplied;
 
   let discountAmount = 0;
   if (couponApplied === "SAVE10") {
-    discountAmount = Math.round(rawSubtotal * 0.1);
+    discountAmount = roundMoney(subtotal * 0.1);
   } else if (couponApplied === "SAVE20") {
-    discountAmount = Math.round(rawSubtotal * 0.2);
+    discountAmount = roundMoney(subtotal * 0.2);
   }
 
   const deliveryFee = subtotal > 0 ? 15 : 0;
-  const total = Math.max(0, subtotal - discountAmount + deliveryFee);
+  const total = roundMoney(Math.max(0, subtotal - discountAmount + deliveryFee));
 
   const handleUpdateQuantity = async (productId, size, currentQty, delta) => {
     const newQty = currentQty + delta;
@@ -239,9 +238,9 @@ function Cart() {
                 const quantity = item.quantity;
                 const image = resolveImageUrl(product?.images?.[0]);
 
-                const unitPrice = product.discountRate
-                  ? Math.round(product.price * (1 - product.discountRate / 100))
-                  : product.price || 0;
+                const unitPrice = roundMoney(
+                  product.price * (1 - (product.discountRate || 0) / 100)
+                );
 
                 return (
                   <React.Fragment key={`${prodId}-${size}-${idx}`}>
@@ -284,7 +283,7 @@ function Cart() {
 
                         <div className="flex justify-between items-center mt-2">
                           <span className="font-satoshi-bold text-lg lg:text-xl text-black">
-                            ${unitPrice}
+                            ${formatMoney(unitPrice)}
                           </span>
 
                           <div className="flex items-center justify-between w-24 h-8 bg-[#F0F0F0] rounded-full px-2.5">
@@ -327,26 +326,26 @@ function Cart() {
               <div className="space-y-3 font-satoshi-regular text-sm lg:text-base">
                 <div className="flex justify-between text-black/60">
                   <span>Subtotal</span>
-                  <span className="font-satoshi-bold text-black">${subtotal}</span>
+                  <span className="font-satoshi-bold text-black">${formatMoney(subtotal)}</span>
                 </div>
 
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-black/60">
                     <span>Discount ({couponApplied})</span>
-                    <span className="font-satoshi-bold text-red">-${discountAmount}</span>
+                    <span className="font-satoshi-bold text-red">-${formatMoney(discountAmount)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between text-black/60">
                   <span>Delivery Fee</span>
-                  <span className="font-satoshi-bold text-black">${deliveryFee}</span>
+                  <span className="font-satoshi-bold text-black">${formatMoney(deliveryFee)}</span>
                 </div>
 
                 <hr className="border-black/10 my-3" />
 
                 <div className="flex justify-between text-base lg:text-xl font-satoshi-bold text-black">
                   <span>Total</span>
-                  <span>${total}</span>
+                  <span>${formatMoney(total)}</span>
                 </div>
               </div>
 

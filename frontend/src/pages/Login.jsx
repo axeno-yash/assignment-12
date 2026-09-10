@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { RedirectPath, Button } from "../components";
 import { useLoginUserMutation } from "../services/auth/authApi";
+import { isEmail } from "../utils/validate.js";
 
 function Login() {
   const navigate = useNavigate();
@@ -14,13 +15,21 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setErrorMessage("Please fill in both email and password.");
+      return;
+    }
+    if (!isEmail(email)) {
+      setErrorMessage("Enter a valid email address.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage("Password must be at least 6 characters.");
       return;
     }
 
     try {
-      const res = await loginUser({ email, password }).unwrap();
+      const res = await loginUser({ email: email.trim(), password }).unwrap();
       if (res.role === "admin") {
         navigate("/admin");
       } else {
@@ -59,7 +68,7 @@ function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="font-satoshi-medium text-sm text-black">
                 Email Address
@@ -70,7 +79,6 @@ function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 className="w-full bg-[#F0F0F0] rounded-[30px] px-5 py-3.5 text-sm font-satoshi-regular outline-none text-black placeholder:text-black/40 border border-transparent focus:border-black/20"
-                required
               />
             </div>
 
@@ -86,7 +94,6 @@ function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 className="w-full bg-[#F0F0F0] rounded-[30px] px-5 py-3.5 text-sm font-satoshi-regular outline-none text-black placeholder:text-black/40 border border-transparent focus:border-black/20"
-                required
               />
             </div>
 

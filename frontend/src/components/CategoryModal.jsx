@@ -3,9 +3,15 @@ import React, { useState } from "react";
 function CategoryModal({ category, saving = false, error = null, onClose, onSubmit }) {
   const isEdit = Boolean(category);
   const [name, setName] = useState(category?.name || "");
+  const [clientError, setClientError] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!name.trim()) {
+      setClientError("Category name is required.");
+      return;
+    }
+    setClientError(null);
     onSubmit({ name: name.trim() });
   };
 
@@ -40,24 +46,26 @@ function CategoryModal({ category, saving = false, error = null, onClose, onSubm
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 pt-4 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="p-5 pt-4 flex flex-col gap-4">
           <div>
             <label className="block text-xs font-satoshi-bold text-black mb-1.5">
-              Category name
+              Category name *
             </label>
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setClientError(null);
+              }}
               placeholder="e.g. Hoodie"
-              required
               className="w-full border border-black/20 rounded-xl px-3 py-2 text-sm font-satoshi-regular text-black focus:outline-none focus:border-black placeholder:text-black/30 bg-white"
             />
           </div>
 
-          {error && (
+          {(clientError || error) && (
             <div className="text-xs font-satoshi-medium px-4 py-2.5 rounded-xl bg-red-50 text-red-700 border border-red-200">
-              {error}
+              {clientError || error}
             </div>
           )}
 

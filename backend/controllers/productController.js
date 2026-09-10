@@ -135,9 +135,70 @@ export const getProductById = async (req, res) => {
     }
 };
 
+function parseBodyImages(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return [];
+        if (trimmed.startsWith("[")) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+            } catch {
+                return [trimmed];
+            }
+        }
+        return [trimmed];
+    }
+    return [];
+}
+
+function parseBodyVariants(value) {
+    if (!value) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+        try {
+            return JSON.parse(value);
+        } catch {
+            return undefined;
+        }
+    }
+    return undefined;
+}
+
+function toNumberOrUndefined(value) {
+    if (value === undefined || value === null || value === "") return undefined;
+    return Number(value);
+}
+
+// Merges JSON body fields with uploaded files so the same endpoint
+// accepts both application/json and multipart/form-data requests.
+function buildProductPayload(req) {
+    const uploadedUrls = (req.files || []).map((f) => `/public/assets/${f.filename}`);
+    const payload = {
+        title: req.body.title,
+        description: req.body.description,
+        category: req.body.category,
+    };
+    const price = toNumberOrUndefined(req.body.price);
+    if (price !== undefined) payload.price = price;
+    const discountRate = toNumberOrUndefined(req.body.discountRate);
+    if (discountRate !== undefined) payload.discountRate = discountRate;
+    const rating = toNumberOrUndefined(req.body.rating);
+    if (rating !== undefined) payload.rating = rating;
+    const variants = parseBodyVariants(req.body.variants);
+    if (variants !== undefined) payload.variants = variants;
+    const bodyImages = parseBodyImages(req.body.images);
+    if (bodyImages.length > 0 || uploadedUrls.length > 0) {
+        payload.images = [...bodyImages, ...uploadedUrls];
+    }
+    return payload;
+}
+
 export const createProduct = async (req, res) => {
     try {
-        const { success, data, error } = createProductSchema.safeParse(req.body);
+        const { success, data, error } = createProductSchema.safeParse(buildProductPayload(req));
         if (!success || error) {
             return res.status(400).json({ message: "Invalid product data", details: error.errors });
         }
@@ -152,7 +213,7 @@ export const createProduct = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
     try {
-        const { success, data, error } = updateProductSchema.safeParse(req.body);
+        const { success, data, error } = updateProductSchema.safeParse(buildProductPayload(req));
         if (!success || error) {
             return res.status(400).json({ message: "Invalid product data", details: error.errors });
         }

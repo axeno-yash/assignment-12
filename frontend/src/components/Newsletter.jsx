@@ -51,6 +51,7 @@ function Newsletter() {
 
       <form
         onSubmit={handleSubmit}
+        noValidate
         className="flex flex-col gap-3.5 w-full max-w-[400px] mx-auto lg:mx-0 lg:w-[349px] flex-shrink-0"
       >
         <div className="flex items-center w-full h-12 rounded-full px-4 gap-3 bg-white">
@@ -65,7 +66,6 @@ function Newsletter() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email address"
-            required
             disabled={status === "sending"}
           />
         </div>

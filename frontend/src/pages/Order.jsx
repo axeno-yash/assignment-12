@@ -8,6 +8,7 @@ import {
 } from "../services/orders/ordersApi";
 import { useGetUserProfileQuery } from "../services/users/userApi";
 import { useLogoutUserMutation } from "../services/auth/authApi";
+import { formatMoney } from "../utils/money.js";
 
 function Order() {
   const { id } = useParams();
@@ -169,7 +170,7 @@ function Order() {
                       </p>
                     </div>
                     <span className="font-satoshi-bold text-base lg:text-lg text-black">
-                      ${item.priceAtPurchase * item.quantity}
+                      ${formatMoney(item.priceAtPurchase * item.quantity)}
                     </span>
                   </div>
                 );
@@ -190,18 +191,22 @@ function Order() {
               <div className="space-y-2.5">
                 <div className="flex justify-between text-black/60">
                   <span>Subtotal</span>
-                  <span className="font-satoshi-bold text-black">${order.subtotal}</span>
+                  <span className="font-satoshi-bold text-black">${formatMoney(order.subtotal)}</span>
                 </div>
                 {order.discount > 0 && (
                   <div className="flex justify-between text-black/60">
                     <span>Discount {order.couponApplied ? `(${order.couponApplied})` : ""}</span>
-                    <span className="font-satoshi-bold text-red">-${order.discount}</span>
+                    <span className="font-satoshi-bold text-red">-${formatMoney(order.discount)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-black/60">
+                  <span>Delivery</span>
+                  <span className="font-satoshi-bold text-black">${formatMoney(order.deliveryFee ?? 0)}</span>
+                </div>
                 <hr className="border-black/10" />
                 <div className="flex justify-between text-base font-satoshi-bold text-black pt-1">
                   <span>Total Paid</span>
-                  <span>${order.total}</span>
+                  <span>${formatMoney(order.total)}</span>
                 </div>
               </div>
             </div>
@@ -341,7 +346,7 @@ function Order() {
                           </p>
                         </div>
                         <span className="font-satoshi-bold text-sm lg:text-base text-black">
-                          ${item.priceAtPurchase * item.quantity}
+                          ${formatMoney(item.priceAtPurchase * item.quantity)}
                         </span>
                       </div>
                     ))}
@@ -353,7 +358,7 @@ function Order() {
                         Total Amount:
                       </span>
                       <span className="font-satoshi-bold text-base lg:text-lg text-black">
-                        ${order.total}
+                        ${formatMoney(order.total)}
                       </span>
                     </div>
 

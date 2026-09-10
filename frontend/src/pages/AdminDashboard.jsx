@@ -15,6 +15,7 @@ import { useGetFilteredProductsQuery, useUpdateProductStockMutation, useCreatePr
 import { useGetAllCategoriesQuery, useCreateCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } from "../services/category/categoryApi";
 import { useGetUserProfileQuery } from "../services/users/userApi";
 import { categorySlug } from "../utils/slug.js";
+import { formatMoney } from "../utils/money.js";
 
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("orders");
@@ -165,7 +166,20 @@ function AdminDashboard() {
     setProductModalOpen(true);
   };
 
-  const handleSaveProduct = async (payload) => {
+  const toProductFormData = (payload, files) => {
+    const formData = new FormData();
+    formData.append("title", payload.title);
+    formData.append("description", payload.description);
+    formData.append("price", String(payload.price));
+    formData.append("discountRate", String(payload.discountRate ?? 0));
+    formData.append("category", payload.category);
+    formData.append("images", JSON.stringify(payload.images));
+    formData.append("variants", JSON.stringify(payload.variants));
+    files.forEach((file) => formData.append("images", file));
+    return formData;
+  };
+
+  const handleSaveProduct = async (payload, files = []) => {
     setProductSaving(true);
     setProductError(null);
     try {
@@ -179,6 +193,7 @@ function AdminDashboard() {
           quantity: Number(v.quantity),
         }));
         const detailsChanged =
+          files.length > 0 ||
           payload.title !== (editingProduct.title || "") ||
           payload.description !== (editingProduct.description || "") ||
           Number(payload.price) !== Number(editingProduct.price || 0) ||
@@ -205,11 +220,15 @@ function AdminDashboard() {
           }).unwrap();
           setProductMessage({ type: "success", text: "Stock updated successfully!" });
         } else {
-          await updateProduct({ id: editingProduct._id, ...payload }).unwrap();
+          const body =
+            files.length > 0 ? toProductFormData(payload, files) : payload;
+          await updateProduct({ id: editingProduct._id, body }).unwrap();
           setProductMessage({ type: "success", text: "Product updated successfully!" });
         }
       } else {
-        await createProduct(payload).unwrap();
+        const body =
+          files.length > 0 ? toProductFormData(payload, files) : payload;
+        await createProduct(body).unwrap();
         setProductMessage({ type: "success", text: "Product added successfully!" });
       }
       setProductModalOpen(false);
@@ -454,7 +473,7 @@ function AdminDashboard() {
             </span>
             <div className="my-2">
               <span className="font-satoshi-bold text-24 lg:text-32 text-black">
-                ${stats?.totalRevenue ?? 0}
+                ${formatMoney(stats?.totalRevenue ?? 0)}
               </span>
             </div>
             <span className="font-satoshi-medium text-xs text-green-600">
@@ -596,11 +615,11 @@ function AdminDashboard() {
             ) : (
               <AdminTable minWidth="760px">
                   <AdminTableHead>
-                      <th className="pb-3 pr-4 whitespace-nowrap">Order ID &amp; Date</th>
-                      <th className="pb-3 px-4 whitespace-nowrap">Customer</th>
-                      <th className="pb-3 px-4 whitespace-nowrap">Items Summary</th>
-                      <th className="pb-3 px-4 whitespace-nowrap text-right">Total</th>
-                      <th className="pb-3 pl-4 whitespace-nowrap">Fulfillment Status</th>
+                      <th className="pb-4 pr-4 whitespace-nowrap">Order ID &amp; Date</th>
+                      <th className="pb-4 px-4 whitespace-nowrap">Customer</th>
+                      <th className="pb-4 px-4 whitespace-nowrap">Items Summary</th>
+                      <th className="pb-4 px-4 whitespace-nowrap text-right">Total</th>
+                      <th className="pb-4 pl-4 whitespace-nowrap">Fulfillment Status</th>
                   </AdminTableHead>
                   <tbody className="divide-y divide-black/10 text-sm">
                     {filteredOrders.map((order) => {
@@ -662,16 +681,16 @@ function AdminDashboard() {
 
                             <td className="py-4 px-4 text-right whitespace-nowrap">
                               <span className="font-satoshi-bold text-black">
-                                ${order.total}
+                                ${formatMoney(order.total)}
                               </span>
                               {order.couponApplied && (
                                 <span className="block text-[10px] text-green-700 font-satoshi-medium">
-                                  Coupon: {order.couponApplied} (-${order.discount})
+                                  Coupon: {order.couponApplied} (-${formatMoney(order.discount)})
                                 </span>
                               )}
                             </td>
 
-                            <td className="py-4 px-4">
+                            <td className="py-4 pl-4">
                               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                                 <span
                                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-satoshi-bold uppercase border ${badge.badgeClass}`}
@@ -728,7 +747,7 @@ function AdminDashboard() {
                                             </div>
                                           </div>
                                           <span className="font-satoshi-bold text-black flex-shrink-0">
-                                            ${item.priceAtPurchase * item.quantity}
+                                            ${formatMoney(item.priceAtPurchase * item.quantity)}
                                           </span>
                                         </div>
                                       ))}
@@ -750,7 +769,7 @@ function AdminDashboard() {
                                       <div className="flex justify-between text-black/60">
                                         <span>Subtotal</span>
                                         <span className="font-satoshi-bold text-black">
-                                          ${order.subtotal}
+                                          ${formatMoney(order.subtotal)}
                                         </span>
                                       </div>
                                       {order.discount > 0 && (
@@ -762,14 +781,20 @@ function AdminDashboard() {
                                               : ""}
                                           </span>
                                           <span className="font-satoshi-bold text-red">
-                                            -${order.discount}
+                                            -${formatMoney(order.discount)}
                                           </span>
                                         </div>
                                       )}
+                                      <div className="flex justify-between text-black/60">
+                                        <span>Delivery</span>
+                                        <span className="font-satoshi-bold text-black">
+                                          ${formatMoney(order.deliveryFee ?? 0)}
+                                        </span>
+                                      </div>
                                       <hr className="border-black/10 my-1" />
                                       <div className="flex justify-between text-sm font-satoshi-bold text-black">
                                         <span>Total Amount</span>
-                                        <span>${order.total}</span>
+                                        <span>${formatMoney(order.total)}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -801,48 +826,68 @@ function AdminDashboard() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 mb-6">
-              {[
-                { key: "all", label: `All (${products.length})` },
-                { key: "low", label: `Low Stock (${lowStockProducts.length})` },
-                { key: "out", label: `Out of Stock (${outOfStockProducts.length})` },
-              ].map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setStockFilter(option.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-satoshi-bold transition-all cursor-pointer ${
-                    stockFilter === option.key
-                      ? "bg-black text-white"
-                      : "bg-[#F0F0F0] text-black/60 hover:bg-black/10"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+            <div className="flex flex-col md:flex-row md:items-center gap-2 mb-6">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search products by name..."
+                  className="w-full text-xs font-satoshi-regular px-3 py-2 bg-[#F0F0F0] rounded-full border border-transparent focus:border-black focus:outline-none placeholder:text-black/40"
+                />
+                {productSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setProductSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-black/40 hover:text-black"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { key: "all", label: `All (${products.length})` },
+                  { key: "low", label: `Low Stock (${lowStockProducts.length})` },
+                  { key: "out", label: `Out of Stock (${outOfStockProducts.length})` },
+                ].map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setStockFilter(option.key)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-satoshi-bold transition-all cursor-pointer ${
+                      stockFilter === option.key
+                        ? "bg-black text-white"
+                        : "bg-[#F0F0F0] text-black/60 hover:bg-black/10"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {visibleProducts.length === 0 ? (
+            {searchedProducts.length === 0 ? (
               <div className="text-center py-12 bg-[#F0F0F0]/50 rounded-2xl p-6">
                 <p className="font-satoshi-bold text-base text-black mb-1">
                   No products found
                 </p>
                 <p className="text-xs text-black/60">
-                  No products match the selected stock filter.
+                  Try a different search term or stock filter.
                 </p>
               </div>
             ) : (
               <AdminTable minWidth="720px">
                   <AdminTableHead>
-                    <th className="pb-3 pr-4 whitespace-nowrap">Product Title</th>
-                    <th className="pb-3 px-4 whitespace-nowrap">Category</th>
-                    <th className="pb-3 px-4 whitespace-nowrap text-right">Price</th>
-                    <th className="pb-3 px-4 whitespace-nowrap text-right">Total Stock</th>
-                    <th className="pb-3 px-4 whitespace-nowrap">Stock Status</th>
-                    <th className="pb-3 pl-4 whitespace-nowrap text-right">Action</th>
+                    <th className="pb-4 pr-4 whitespace-nowrap">Product Title</th>
+                    <th className="pb-4 px-4 whitespace-nowrap">Category</th>
+                    <th className="pb-4 px-4 whitespace-nowrap text-right">Price</th>
+                    <th className="pb-4 px-4 whitespace-nowrap text-right">Total Stock</th>
+                    <th className="pb-4 px-4 whitespace-nowrap">Stock Status</th>
+                    <th className="pb-4 pl-4 whitespace-nowrap text-right">Action</th>
                   </AdminTableHead>
                 <tbody className="divide-y divide-black/10 text-sm">
-                  {visibleProducts.map((prod) => {
+                  {searchedProducts.map((prod) => {
                     const totalQty = (prod.variants || []).reduce(
                       (acc, v) => acc + (v.quantity || 0),
                       0
@@ -863,10 +908,10 @@ function AdminDashboard() {
                         <td className="py-4 px-4 text-black/70">
                           {prod.category?.name || "Apparel"}
                         </td>
-                        <td className="py-4 px-4 font-satoshi-bold text-black">
+                        <td className="py-4 px-4 font-satoshi-bold text-black text-right whitespace-nowrap">
                           ${prod.price}
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 text-right whitespace-nowrap">
                           <span className="font-satoshi-bold">{totalQty}</span>
                           <span className="text-xs text-black/40 block">
                             {(prod.variants || [])
@@ -923,11 +968,11 @@ function AdminDashboard() {
 
             <AdminTable minWidth="640px">
                   <AdminTableHead>
-                    <th className="pb-3 pr-4 whitespace-nowrap">User Name</th>
-                    <th className="pb-3 px-4 whitespace-nowrap">Email</th>
-                    <th className="pb-3 px-4 whitespace-nowrap">Current Role</th>
-                    <th className="pb-3 px-4 whitespace-nowrap">Address</th>
-                    <th className="pb-3 pl-4 whitespace-nowrap text-right">Role Toggle</th>
+                    <th className="pb-4 pr-4 whitespace-nowrap">User Name</th>
+                    <th className="pb-4 px-4 whitespace-nowrap">Email</th>
+                    <th className="pb-4 px-4 whitespace-nowrap">Current Role</th>
+                    <th className="pb-4 px-4 whitespace-nowrap">Address</th>
+                    <th className="pb-4 pl-4 whitespace-nowrap text-right">Role Toggle</th>
                   </AdminTableHead>
                 <tbody className="divide-y divide-black/10 text-sm">
                   {users.map((u) => {

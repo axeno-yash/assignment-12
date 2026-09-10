@@ -41,6 +41,10 @@ const orderSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        deliveryFee: {
+            type: Number,
+            default: 0,
+        },
         couponApplied: {
             type: String,
             enum: ["SAVE10", "SAVE20"],

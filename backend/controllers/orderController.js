@@ -12,6 +12,9 @@ const updateOrderStatusSchema = z.object({
     status: z.enum(["pending", "shipped", "delivered"]),
 }).strict();
 
+// Flat delivery charge for every non-empty order (same rule as the cart page).
+const DELIVERY_FEE = 15;
+
 export const createOrderFromCart = async (req, res) => {
     try {
         const { success, data, error } = createOrderSchema.safeParse(req.body);
@@ -41,28 +44,30 @@ export const createOrderFromCart = async (req, res) => {
             }
 
             const discountedPrice = product.price * (1 - (product.discountRate || 0) / 100);
-            const itemTotal = discountedPrice * item.quantity;
+            const itemTotal = Math.round(discountedPrice) * item.quantity;
             subtotal += itemTotal;
 
             orderItems.push({
                 product: product._id,
                 title: product.title,
                 size: item.size,
-                priceAtPurchase: Number(discountedPrice.toFixed(2)),
+                priceAtPurchase: Math.round(discountedPrice),
                 quantity: item.quantity,
             });
         }
 
         const coupon = data.couponApplied || cart.couponApplied;
+        const roundedSubtotal = Math.round(subtotal);
         let discount = 0;
 
         if (coupon === "SAVE10") {
-            discount = Number((subtotal * 0.1).toFixed(2));
+            discount = Math.round(roundedSubtotal * 0.1);
         } else if (coupon === "SAVE20") {
-            discount = Number((subtotal * 0.2).toFixed(2));
+            discount = Math.round(roundedSubtotal * 0.2);
         }
 
-        const total = Number((subtotal - discount).toFixed(2));
+        const deliveryFee = roundedSubtotal > 0 ? DELIVERY_FEE : 0;
+        const total = roundedSubtotal - discount + deliveryFee;
 
         for (const item of cart.items) {
             await Product.updateOne(
@@ -74,8 +79,9 @@ export const createOrderFromCart = async (req, res) => {
         const order = await Order.create({
             user: req.user._id,
             items: orderItems,
-            subtotal: Number(subtotal.toFixed(2)),
+            subtotal: roundedSubtotal,
             discount,
+            deliveryFee,
             couponApplied: coupon,
             total,
             shippingInfo: data.shippingInfo,
